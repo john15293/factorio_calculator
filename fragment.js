@@ -15,6 +15,7 @@ import { DEFAULT_RATE, DEFAULT_RATE_PRECISION, DEFAULT_COUNT_PRECISION, DEFAULT_
 import { DEFAULT_TAB, currentTab, DEFAULT_VISUALIZER, visualizerType, DEFAULT_RENDER, visualizerRender, isDefaultVisDirection, visualizerDirection } from "./events.js"
 import { spec, DEFAULT_BELT, DEFAULT_FUEL } from "./factory.js"
 import { Rational } from "./rational.js"
+import { DEFAULT_QUALITY } from "./quality.js"
 import { currentMod, DEFAULT_TITLE, DEFAULT_COLOR_SCHEME, colorScheme } from "./settings.js"
 import { sorted } from "./sort.js"
 
@@ -192,6 +193,25 @@ export function formatSettings(excludeTitle, overrideTab, targets) {
     }
     if (moduleSettings.length > 0) {
         settings += "&modules=" + moduleSettings.join(",")
+    }
+
+    let qualitySettings = []
+    if (spec.lastTotals) {
+        for (let [recipe, rate] of spec.lastTotals.rates) {
+            let bq = spec.getBuildingQuality(recipe)
+            let moduleSpec = spec.spec.get(recipe)
+            let mq = moduleSpec ? moduleSpec.moduleQuality : DEFAULT_QUALITY
+            let kq = moduleSpec ? moduleSpec.beaconQuality : DEFAULT_QUALITY
+            if (bq === DEFAULT_QUALITY && mq === DEFAULT_QUALITY && kq === DEFAULT_QUALITY) {
+                continue
+            }
+            qualitySettings.push(
+                recipe.key + ":" + bq.code() + ":" + mq.code() + ":" + kq.code()
+            )
+        }
+    }
+    if (qualitySettings.length > 0) {
+        settings += "&quality=" + qualitySettings.join(",")
     }
 
     if (!spec.isDefaultPriority()) {

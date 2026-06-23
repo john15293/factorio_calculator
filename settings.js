@@ -18,6 +18,7 @@ import { spec, DEFAULT_PLANET, DEFAULT_BELT, DEFAULT_FUEL, buildingSort } from "
 import { getRecipeGroups } from "./groups.js"
 import { changeMod } from "./init.js"
 import { shortModules, moduleRows, moduleDropdown } from "./module.js"
+import { qualityByCode, DEFAULT_QUALITY } from "./quality.js"
 import { Rational, zero } from "./rational.js"
 import { sorted } from "./sort.js"
 
@@ -222,6 +223,35 @@ function renderModules(settings) {
                 moduleSpec.setBeaconModule(module1, 0)
                 moduleSpec.setBeaconModule(module2, 1)
                 moduleSpec.setBeaconCount(count)
+            }
+        }
+    }
+}
+
+// quality
+
+function renderQuality(settings) {
+    let qualityString = settings.get("quality")
+    if (qualityString === undefined || qualityString === "") {
+        return
+    }
+    for (let recipeSetting of qualityString.split(",")) {
+        let parts = recipeSetting.split(":")
+        let recipe = spec.recipes.get(parts[0])
+        if (recipe === undefined) {
+            console.log("unknown recipe:", parts[0])
+            continue
+        }
+        if (parts[1]) {
+            spec.setBuildingQuality(recipe, qualityByCode.get(parts[1]) || DEFAULT_QUALITY)
+        }
+        let moduleSpec = spec.getModuleSpec(recipe)
+        if (moduleSpec) {
+            if (parts[2]) {
+                moduleSpec.moduleQuality = qualityByCode.get(parts[2]) || DEFAULT_QUALITY
+            }
+            if (parts[3]) {
+                moduleSpec.beaconQuality = qualityByCode.get(parts[3]) || DEFAULT_QUALITY
             }
         }
     }
@@ -867,6 +897,7 @@ export function renderSettings(settings) {
     renderRecipes(settings)
     renderTargets(settings)
     renderModules(settings)
+    renderQuality(settings)
     renderDebugCheckbox(settings)
     renderTab(settings)
 }

@@ -19,6 +19,7 @@ import { getRecipeGroups, topoSort } from "./groups.js"
 import { Icon } from "./icon.js"
 import { useLegacyCalculation } from "./init.js"
 import { moduleRows, moduleDropdown } from "./module.js"
+import { QUALITIES, qualityByKey } from "./quality.js"
 import { Rational, zero, one } from "./rational.js"
 
 let powerSuffixes = ["\u00A0W", "kW", "MW", "GW", "TW", "PW"]
@@ -453,6 +454,34 @@ class PipeIcon {
     }
 }
 
+// Renders a native <select> for choosing a quality tier into each cell of the
+// given selection. The cell's datum must be a DisplayRow; getQuality/setQuality
+// receive that DisplayRow and read/write the relevant quality (on the spec for
+// buildings, on the ModuleSpec for modules/beacons). If `before` is given, the
+// select is inserted before that child selector; otherwise it is appended.
+function renderQualitySelect(cell, className, getQuality, setQuality, before) {
+    cell.selectAll("select." + className).remove()
+    let select
+    if (before) {
+        select = cell.insert("select", before)
+    } else {
+        select = cell.append("select")
+    }
+    select
+        .attr("class", d => "quality-select " + className + " quality-" + getQuality(d).key)
+        .on("change", function(event, d) {
+            setQuality(d, qualityByKey.get(this.value))
+            spec.updateSolution()
+        })
+    select.selectAll("option")
+        .data(QUALITIES)
+        .join("option")
+            .attr("value", q => q.key)
+            .text(q => q.name)
+    select.property("value", d => getQuality(d).key)
+    return select
+}
+
 export function displayItems(spec, totals) {
     let headers = [
         new Header("", 1),
@@ -642,6 +671,8 @@ export function displayItems(spec, totals) {
         .selectAll("tt.belt-count")
             .text("")
     let buildingRow = row.filter(d => d.building !== null)
+    // Drop stale quality selects from rows that no longer have a building.
+    row.filter(d => d.building === null).selectAll("select.building-quality").remove()
     let buildingCell = buildingRow.selectAll("td.building-icon")
     buildingCell.selectAll("*").remove()
     let buildingExtra = buildingCell.filter(d => !d.single)
@@ -649,6 +680,12 @@ export function displayItems(spec, totals) {
     buildingExtra.append("span")
         .text(":")
     buildingCell.append(d => d.building.icon.make(32))
+    renderQualitySelect(
+        buildingCell,
+        "building-quality",
+        d => spec.getBuildingQuality(d.recipe),
+        (d, q) => spec.setBuildingQuality(d.recipe, q),
+    )
     buildingCell.append("span")
         .text(" \u00d7")
     buildingRow.selectAll("tt.building-count")
@@ -658,9 +695,22 @@ export function displayItems(spec, totals) {
     // XXX: Something's wrong with how I did the module dropdowns. Work around
     // the issue for now by re-rendering all of them on each update.
     moduleCell.selectAll("*").remove()
+    renderQualitySelect(
+        moduleCell,
+        "module-quality",
+        d => d.moduleSpec.moduleQuality,
+        (d, q) => { d.moduleSpec.moduleQuality = q },
+    )
     moduleRow.selectAll("span.beacon-container").selectAll("*").remove()
     moduleDropdown(moduleCell, d => d.slots)
     moduleDropdown(moduleRow.selectAll("span.beacon-container"), d => d.beaconModules)
+    renderQualitySelect(
+        moduleRow.selectAll("td.beacon"),
+        "beacon-quality",
+        d => d.moduleSpec.beaconQuality,
+        (d, q) => { d.moduleSpec.beaconQuality = q },
+        "span.beacon-count",
+    )
     moduleRow.selectAll("span.beacon-count input")
         .attr("value", d => spec.format.count(d.moduleSpec.beaconCount))
 

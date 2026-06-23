@@ -17,6 +17,7 @@ import { displayItems } from "./display.js"
 import { currentTab } from "./events.js"
 import { formatSettings } from "./fragment.js"
 import { ModuleSpec } from "./module.js"
+import { DEFAULT_QUALITY } from "./quality.js"
 import { PriorityList } from "./priority.js"
 import { Rational, zero, half, one } from "./rational.js"
 import { DISABLED_RECIPE_PREFIX } from "./recipe.js"
@@ -138,6 +139,10 @@ class FactorySpecification {
 
         // Maps recipe to ModuleSpec
         this.spec = new Map()
+        // Maps recipe to its building's quality tier. Building quality is kept
+        // here (not on ModuleSpec) so it applies even to buildings with no
+        // module slots.
+        this.buildingQuality = new Map()
         this.defaultModule = null
         this.secondaryDefaultModule = null
         this.defaultBeacon = [null, null]
@@ -528,6 +533,17 @@ class FactorySpecification {
             return this.initModuleSpec(recipe, building)
         }
         return m
+    }
+    getBuildingQuality(recipe) {
+        let q = this.buildingQuality.get(recipe)
+        return q === undefined ? DEFAULT_QUALITY : q
+    }
+    setBuildingQuality(recipe, quality) {
+        if (quality === DEFAULT_QUALITY) {
+            this.buildingQuality.delete(recipe)
+        } else {
+            this.buildingQuality.set(recipe, quality)
+        }
     }
     getProdEffect(recipe) {
         let m = this.getModuleSpec(recipe)

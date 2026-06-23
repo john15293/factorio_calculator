@@ -388,6 +388,18 @@ span.beacon-container {
     background-color: var(--light);
     padding: 0.5em;
 }
+select.quality-select {
+    margin: 0 0.2em;
+    padding: 0 0.15em;
+    font-size: 0.85em;
+    vertical-align: middle;
+    cursor: pointer;
+}
+select.quality-select.quality-normal { color: #d8d8d8; }
+select.quality-select.quality-uncommon { color: #6cd36c; }
+select.quality-select.quality-rare { color: #59a6ff; }
+select.quality-select.quality-epic { color: #c77dff; }
+select.quality-select.quality-legendary { color: #ffb13b; }
 svg.popout {
     color: var(--accent);
     width: 16;

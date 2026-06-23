@@ -16,6 +16,7 @@ import { Icon, sprites } from "./icon.js"
 import { useLegacyCalculation } from "./init.js"
 import { Rational, zero, half, one } from "./rational.js"
 import { sorted } from "./sort.js"
+import { QUALITIES, DEFAULT_QUALITY, BEACON_EFFECTIVITY_PER_LEVEL } from "./quality.js"
 
 let hundred = Rational.from_float(100)
 function percent(x) {
@@ -57,6 +58,23 @@ class Module {
     }
     hasProdEffect() {
         return !this.productivity.isZero()
+    }
+    // Effects scaled for the given quality. Only the beneficial direction of
+    // an effect scales; penalties (negative speed, positive power) are fixed.
+    effectiveSpeed(quality) {
+        if (this.speed.less(zero)) {
+            return this.speed
+        }
+        return this.speed.mul(quality.factor)
+    }
+    effectiveProductivity(quality) {
+        return this.productivity.mul(quality.factor)
+    }
+    effectivePower(quality) {
+        if (this.power.less(zero)) {
+            return this.power.mul(quality.factor)
+        }
+        return this.power
     }
     renderTooltip() {
         let self = this
@@ -144,6 +162,11 @@ export class ModuleSpec {
         this.modules = []
         this.beaconModules = [spec.defaultBeacon[0], spec.defaultBeacon[1]]
         this.beaconCount = spec.defaultBeaconCount
+        // Quality tiers for this recipe's modules and its beacon. The beacon
+        // quality also governs the quality of the modules placed in the beacon.
+        // (Building quality lives on the spec, keyed by recipe.)
+        this.moduleQuality = DEFAULT_QUALITY
+        this.beaconQuality = DEFAULT_QUALITY
     }
     setBuilding(building, spec) {
         this.building = building
@@ -180,14 +203,15 @@ export class ModuleSpec {
             if (!module) {
                 continue
             }
-            speed = speed.add(module.speed)
+            speed = speed.add(module.effectiveSpeed(this.moduleQuality))
         }
         if (this.modules.length > 0) {
+            let effectivity = beaconEffectAtQuality(this.beaconQuality)
             for (let module of this.beaconModules) {
                 if (module === null) {
                     continue
                 }
-                let beacon = module.speed.mul(this.beaconCount).mul(beaconEffect)
+                let beacon = module.effectiveSpeed(this.beaconQuality).mul(this.beaconCount).mul(effectivity)
                 if (!useLegacyCalculation) {
                     let i = this.beaconCount.ceil().toFloat() - 1
                     if (i >= beaconProfile.length) {
@@ -206,7 +230,7 @@ export class ModuleSpec {
             if (!module) {
                 continue
             }
-            prod = prod.add(module.productivity)
+            prod = prod.add(module.effectiveProductivity(this.moduleQuality))
         }
         prod = prod.add(this.building.prodEffect(spec))
         return prod
@@ -217,14 +241,15 @@ export class ModuleSpec {
             if (!module) {
                 continue
             }
-            power = power.add(module.power)
+            power = power.add(module.effectivePower(this.moduleQuality))
         }
         if (this.modules.length > 0) {
+            let effectivity = beaconEffectAtQuality(this.beaconQuality)
             for (let module of this.beaconModules) {
                 if (module === null) {
                     continue
                 }
-                let beacon = module.power.mul(this.beaconCount).mul(beaconEffect)
+                let beacon = module.effectivePower(this.beaconQuality).mul(this.beaconCount).mul(effectivity)
                 if (!useLegacyCalculation) {
                     let i = this.beaconCount.ceil().toFloat() - 1
                     if (i >= beaconProfile.length) {
@@ -248,6 +273,11 @@ export let shortModules = null
 
 let beaconProfile
 let beaconEffect
+
+// Beacon distribution effectivity at a given quality: base + 0.2 per level.
+function beaconEffectAtQuality(quality) {
+    return beaconEffect.add(BEACON_EFFECTIVITY_PER_LEVEL.mul(Rational.from_float(quality.level)))
+}
 
 export function getModules(data, items) {
     let modules = new Map()

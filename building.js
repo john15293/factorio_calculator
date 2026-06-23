@@ -49,7 +49,8 @@ class Building {
         } else {
             speedEffect = one
         }
-        return recipe.time.reciprocate().mul(this.speed).mul(speedEffect)
+        let qualityFactor = spec.getBuildingQuality(recipe).factor
+        return recipe.time.reciprocate().mul(this.speed).mul(speedEffect).mul(qualityFactor)
     }
     canBeacon() {
         return this.moduleSlots > 0
@@ -106,7 +107,8 @@ class Miner extends Building {
         } else {
             speedEffect = one
         }
-        return this.miningSpeed.div(recipe.miningTime).mul(speedEffect)
+        let qualityFactor = spec.getBuildingQuality(recipe).factor
+        return this.miningSpeed.div(recipe.miningTime).mul(speedEffect).mul(qualityFactor)
     }
     prodEffect(spec) {
         return spec.miningProd
